@@ -15,9 +15,10 @@
         authorization_grant_type: password
         description: "CaC automation client"
         state: present
-        gateway_hostname: "{{ gateway_hostname }}"
-        gateway_username: "{{ gateway_username }}"
-        gateway_password: "{{ gateway_password }}"
+        aap_hostname: "{{ gateway_hostname }}"
+        aap_username: "{{ gateway_username }}"
+        aap_password: "{{ gateway_password }}"
+        aap_validate_certs: false
       register: oauth_app
       no_log: false
 
