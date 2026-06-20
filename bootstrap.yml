@@ -3,7 +3,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    oauth_app_name: "cac-ci-client-1"
+    oauth_app_name: "cac-ci-client-2"
     oauth_org_name: "Default"
 
   tasks:
