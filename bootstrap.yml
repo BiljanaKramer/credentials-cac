@@ -1,0 +1,48 @@
+---
+- name: Bootstrap OAuth application credentials
+  hosts: localhost
+  gather_facts: false
+  vars:
+    oauth_app_name: "cac-ci-client"
+    oauth_org_name: "Default"
+
+  tasks:
+    - name: Create OAuth application
+      ansible.platform.application:
+        name: "{{ oauth_app_name }}"
+        organization: "{{ oauth_org_name }}"
+        client_type: confidential          # required for client_secret
+        authorization_grant_type: password
+        description: "CaC automation client"
+        state: present
+        gateway_hostname: "{{ gateway_hostname }}"
+        gateway_username: "{{ gateway_username }}"
+        gateway_password: "{{ gateway_password }}"
+      register: oauth_app
+      no_log: true
+
+    - name: Fail if app existed but we have no stored secret
+      ansible.builtin.fail:
+        msg: >
+          Application already exists (changed=false) and no client_secret was returned.
+          Load credentials from vault, or delete the app and re-run bootstrap to rotate.
+      when:
+        - not oauth_app.changed
+        - oauth_app.client_secret is not defined or oauth_app.client_secret == '$encrypted$'
+
+    - name: Persist credentials to encrypted vault file
+      ansible.builtin.copy:
+        dest: "{{ playbook_dir }}/group_vars/all/oauth_credentials.yml"
+        mode: "0600"
+        content: |
+          vault_oauth_client_id: "{{ oauth_app.client_id }}"
+          vault_oauth_client_secret: "{{ oauth_app.client_secret }}"
+      when: oauth_app.changed
+      no_log: true
+
+    - name: Set facts for remainder of this playbook run
+      ansible.builtin.set_fact:
+        oauth_client_id: "{{ oauth_app.client_id }}"
+        oauth_client_secret: "{{ oauth_app.client_secret }}"
+      when: oauth_app.changed
+      no_log: true
