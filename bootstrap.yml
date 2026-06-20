@@ -39,11 +39,11 @@
           vault_oauth_client_id: "{{ oauth_app.client_id }}"
           vault_oauth_client_secret: "{{ oauth_app.client_secret }}"
       when: oauth_app.changed
-      no_log: true
+      no_log: false
 
     - name: Set facts for remainder of this playbook run
       ansible.builtin.set_fact:
         oauth_client_id: "{{ oauth_app.client_id }}"
         oauth_client_secret: "{{ oauth_app.client_secret }}"
       when: oauth_app.changed
-      no_log: true
+      no_log: false
