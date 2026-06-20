@@ -19,7 +19,7 @@
         gateway_username: "{{ gateway_username }}"
         gateway_password: "{{ gateway_password }}"
       register: oauth_app
-      no_log: true
+      no_log: false
 
     - name: Fail if app existed but we have no stored secret
       ansible.builtin.fail:
