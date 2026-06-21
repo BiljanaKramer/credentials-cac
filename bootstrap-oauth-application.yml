@@ -1,0 +1,62 @@
+---
+- name: Bootstrap OAuth application for CaC
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    oauth_app_name: "cac-ci-client"
+    oauth_org_name: "Default"
+    # gateway_hostname / gateway_username / gateway_password:
+    #   supply via job template credentials or extra vars
+
+  tasks:
+    - name: Create OAuth application
+      ansible.platform.application:
+        name: "{{ oauth_app_name }}"
+        organization: "{{ oauth_org_name }}"
+        client_type: confidential
+        authorization_grant_type: password
+        description: "CaC automation OAuth client"
+        state: present
+        gateway_hostname: "{{ gateway_hostname }}"
+        gateway_username: "{{ gateway_username }}"
+        gateway_password: "{{ gateway_password }}"
+      register: oauth_app
+      no_log: true
+
+    - name: Validate client_secret was returned on create
+      ansible.builtin.assert:
+        that:
+          - oauth_app.client_secret is defined
+          - oauth_app.client_secret | length > 0
+          - oauth_app.client_secret != '$encrypted$'
+        fail_msg: >
+          Application was created but client_secret was not returned.
+          Confirm client_type is confidential and check the Gateway API response.
+      when: oauth_app.changed
+
+    - name: Publish OAuth credentials to workflow (new app only)
+      ansible.builtin.set_stats:
+        data:
+          oauth_client_id: "{{ oauth_app.client_id }}"
+          oauth_client_secret: "{{ oauth_app.client_secret }}"
+        aggregate: false
+      when: oauth_app.changed
+      no_log: true
+
+    - name: Publish client_id only when app already existed
+      ansible.builtin.set_stats:
+        data:
+          oauth_client_id: "{{ oauth_app.client_id }}"
+          oauth_bootstrap_changed: false
+        aggregate: false
+      when: not oauth_app.changed
+
+    - name: Warn when app already exists (secret not re-published)
+      ansible.builtin.debug:
+        msg: >
+          OAuth application already exists (changed=false).
+          client_secret was NOT published to the workflow.
+          Job 2 must receive oauth_client_secret from a Controller credential
+          or workflow survey until you rotate/recreate the application.
+      when: not oauth_app.changed
