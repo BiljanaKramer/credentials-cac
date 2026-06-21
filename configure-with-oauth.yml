@@ -1,0 +1,64 @@
+---
+- name: Configure AAP using OAuth credentials
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # From Job 1 set_stats when app was newly created:
+    #   oauth_client_id, oauth_client_secret
+    #
+    # Fallback when Job 1 had changed=false — inject via Custom Credential on this JT:
+    #   oauth_client_id, oauth_client_secret (same variable names)
+    oauth_client_id: "{{ oauth_client_id | default('') }}"
+    oauth_client_secret: "{{ oauth_client_secret | default('') }}"
+
+    # Service account used for password grant (not the OAuth app owner)
+    service_account_user: "{{ service_account_user | default(gateway_username) }}"
+    service_account_password: "{{ service_account_password | default(gateway_password) }}"
+
+  tasks:
+    - name: Ensure OAuth credentials are available
+      ansible.builtin.assert:
+        that:
+          - oauth_client_id | length > 0
+          - oauth_client_secret | length > 0
+        fail_msg: >
+          oauth_client_id and oauth_client_secret are missing.
+          Run workflow Job 1 on first bootstrap (changed=true), or attach a Custom
+          Credential to this job template with those fields, or provide them via
+          workflow survey extra vars.
+
+    - name: Obtain access token (password grant)
+      ansible.builtin.uri:
+        url: "https://{{ gateway_hostname }}/o/token/"
+        method: POST
+        validate_certs: "{{ gateway_validate_certs | default(true) }}"
+        body_format: form-urlencoded
+        body:
+          grant_type: password
+          client_id: "{{ oauth_client_id }}"
+          client_secret: "{{ oauth_client_secret }}"
+          username: "{{ service_account_user }}"
+          password: "{{ service_account_password }}"
+        status_code: 200
+        return_content: true
+      register: token_response
+      no_log: true
+
+    - name: Set gateway token for collection modules
+      ansible.builtin.set_fact:
+        gateway_token: "{{ token_response.json.access_token }}"
+      no_log: true
+
+    # --- Example CaC tasks below; replace with your real configuration ---
+
+    - name: Ensure organization exists
+      ansible.platform.organization:
+        name: "{{ oauth_org_name | default('Default') }}"
+        state: present
+        gateway_hostname: "{{ gateway_hostname }}"
+        gateway_token: "{{ gateway_token }}"
+
+    - name: Example complete
+      ansible.builtin.debug:
+        msg: "CaC tasks completed using OAuth-derived gateway_token."
