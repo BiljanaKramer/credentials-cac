@@ -22,7 +22,7 @@
         gateway_username: "{{ gateway_username }}"
         gateway_password: "{{ gateway_password }}"
       register: oauth_app
-      no_log: true
+      no_log: false
 
     - name: Validate client_secret was returned on create
       ansible.builtin.assert:
@@ -42,7 +42,7 @@
           oauth_client_secret: "{{ oauth_app.client_secret }}"
         aggregate: false
       when: oauth_app.changed
-      no_log: true
+      no_log: false
 
     - name: Publish client_id only when app already existed
       ansible.builtin.set_stats:
