@@ -28,26 +28,23 @@
           Credential to this job template with those fields, or provide them via
           workflow survey extra vars.
 
-    - name: Obtain access token (password grant)
-      ansible.builtin.uri:
-        url: "https://{{ gateway_hostname }}/o/token/"
-        method: POST
-        validate_certs: "{{ gateway_validate_certs | default(true) }}"
-        body_format: form-urlencoded
-        body:
-          grant_type: password
-          client_id: "{{ oauth_client_id }}"
-          client_secret: "{{ oauth_client_secret }}"
-          username: "{{ service_account_user }}"
-          password: "{{ service_account_password }}"
-        status_code: 200
-        return_content: true
-      register: token_response
+    - name: Create API token for CaC (one-time per run, or use stored token)
+      ansible.platform.token:
+        description: "CaC pipeline token"
+        scope: write
+        application: "{{ oauth_app_name | default('cac-ci-client') }}"
+        organization: "{{ oauth_org_name | default('Default') }}"
+        state: present
+        gateway_hostname: "{{ gateway_hostname }}"
+        gateway_username: "{{ gateway_username }}"
+        gateway_password: "{{ gateway_password }}"
+      register: token_result
       no_log: false
-
+      
     - name: Set gateway token for collection modules
       ansible.builtin.set_fact:
-        gateway_token: "{{ token_response.json.access_token }}"
+        gateway_token: "{{ token_result.ansible_facts.aap_token.token }}"
+      when: token_result.changed
       no_log: false
 
     # --- Example CaC tasks below; replace with your real configuration ---
