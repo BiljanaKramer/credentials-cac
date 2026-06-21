@@ -43,12 +43,12 @@
         status_code: 200
         return_content: true
       register: token_response
-      no_log: true
+      no_log: false
 
     - name: Set gateway token for collection modules
       ansible.builtin.set_fact:
         gateway_token: "{{ token_response.json.access_token }}"
-      no_log: true
+      no_log: false
 
     # --- Example CaC tasks below; replace with your real configuration ---
 
